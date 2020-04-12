@@ -1,7 +1,16 @@
 import React, { Component } from 'react'
 import Link from '../link/link'
 import List from '../list/list'
-import './Profile.css'
+import styled from 'styled-components'
+
+const ProfileWrapper = styled.div`
+    width:50%;
+    margin: 10px auto;
+`
+
+const Avatar = styled.img`
+    width:150px;
+`
 
 class Profile extends Component {
 
@@ -9,30 +18,46 @@ class Profile extends Component {
         super()
         this.state = {
             data: [],
-            loading: true
+            repositories: [],
+            loading: true,
+            error: '',
         }
     }
 
     async componentDidMount() {
-        const profile = await fetch("https://api.github.com/users/stemckillop")
-        const profileJSON = await profile.json()
+        try {
+            const profile = await fetch("https://api.github.com/users/stemckillop")
+            const profileJSON = await profile.json()
 
-        console.log(profileJSON)
+            if (profileJSON) {
 
-        if (profileJSON) {
+                const repositories = await fetch(profileJSON.repos_url);
+                const repositoriesJSON = await repositories.json()
+
+                this.setState({
+                    data: profileJSON,
+                    repositories : repositoriesJSON,
+                    loading: false
+                })
+            }
+        } catch (error) {
             this.setState({
-                data: profileJSON,
-                loading: false
+                data: [],
+                loading: false,
+                error: error.message
             })
         }
     }
 
     render() {
 
-        const { data, loading } = this.state
+        const { data, loading, repositories, error } = this.state
 
         if (loading) {
             return <div>Loading...</div>
+        }
+        if (loading || error) {
+            return <div>{loading ? 'Loading...' : error}</div>
         }
 
         const items = [
@@ -45,20 +70,17 @@ class Profile extends Component {
                { label: 'bio', value: data.bio }
              ]
 
+        const projects = repositories.map(repo => ({
+            label: repo.name,
+            value: <Link url={repo.html_url} title="Github URL" />
+        }))
+
         return (
-            <div className='Profile-container'>
-         <img className='Profile-avatar' src={data.avatar_url} alt='avatar' />
-                
-<ul>
-          <li><strong>html_url:</strong> <Link url={data.html_url} title='Github URL' /></li>
-           <li><strong>repos_url:</strong> {data.repos_url}</li>
-           <li><strong>name:</strong> {data.name}</li>
-           <li><strong>company:</strong> {data.company}</li>
-           <li><strong>location:</strong> {data.location}</li>
-           <li><strong>email:</strong> {data.email}</li>
-           <li><strong>bio:</strong> {data.bio}</li>
-         </ul>
-      </div>
+            <ProfileWrapper>
+                <Avatar className='Profile-avatar' src={data.avatar_url} alt='avatar' />
+                <List title="Profile" items={items} />
+                <List title="Projects" items={projects} />
+            </ProfileWrapper>
         )
     }
 
